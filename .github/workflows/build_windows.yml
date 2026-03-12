@@ -1,46 +1,21 @@
-name: Build Windows App
+name: build-release
 
 on:
-  push:
-    branches: [ main, master ]
   workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
 
 jobs:
   build:
-    runs-on: windows-latest
-    
-    # 解决 Node.js 20 弃用警告
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
-          cache: true
-
-      - name: Enable Windows support
-        run: flutter config --enable-windows-desktop
-
-      - name: Get dependencies
-        run: flutter pub get
-
-      # 关键步骤：执行构建并捕获可能的错误
-      - name: Build Windows
-        run: flutter build windows --release
-
-      # 调试步骤：如果构建“成功”但没文件，列出目录确认位置
-      - name: List files for debugging
-        run: dir -Recurse build/windows/
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-executable
-          # 使用通配符确保能抓取到 Release 目录下的内容
-          path: build/windows/runner/Release/
-          if-no-files-found: error # 如果找不到文件，让 Action 直接报错提示
+          flutter-version: '3.24.0'
+      - run: flutter pub get
+      - run: flutter build ${{ matrix.os == 'windows-latest' && 'windows' || 'macos' }}
